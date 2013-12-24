@@ -7,16 +7,17 @@
 //
 
 #import "JGCyclicFlasher.h"
+#import "JGWeakTarget.h"
 
 @interface JGCyclicFlasher ()
 
-@property (nonatomic) CADisplayLink *displayLink;
+@property (nonatomic) CADisplayLink *displayLink; // Synchonizes callbacks with screen refresh rate
 
-@property (nonatomic) NSUInteger intervalCounter; //counts refreshes
-@property (nonatomic) NSUInteger indexCounter; //holds current flashInterval array index
-@property (nonatomic) NSUInteger cycleCounter;
+@property (nonatomic) NSUInteger frameCounter; // Counts displayLink callbacks
+@property (nonatomic) NSUInteger indexCounter; // The current flashInterval array index
+@property (nonatomic) NSUInteger cycleCounter; // The current cycle
 
-@property (nonatomic, readonly) NSUInteger currentIntervalLength;
+@property (nonatomic, readonly) NSUInteger currentIntervalLength; // Frame count of current index in flashInterval
 
 @end
 
@@ -26,29 +27,53 @@
 
 -(id)init{
     if (self = [super init]) {
-        _numberOfCycles = 1; //default value
+        _numberOfCycles = 1; // Default value
     }
     return self;
 }
 
 +(JGCyclicFlasher*)flasherWithFlashInterval:(NSArray*)flashInterval numberOfCycles:(NSUInteger)numberOfCycles flashUpdate:(void(^)(NSUInteger state, NSUInteger cycle))flashUpdate{
+    
     JGCyclicFlasher *flasher = [[JGCyclicFlasher alloc]init];
     flasher.flashInterval = flashInterval;
     flasher.flashUpdate = flashUpdate;
     flasher.numberOfCycles = numberOfCycles;
+    
     return flasher;
 }
 
-+(JGCyclicFlasher*)flasherWithNumberOfCycles:(NSUInteger)numberOfCycles flashUpdate:(void(^)(NSUInteger state, NSUInteger cycle))flashUpdate{
-    return [JGCyclicFlasher flasherWithFlashInterval:@[@1] numberOfCycles:numberOfCycles flashUpdate:flashUpdate];
+-(void)dealloc{
+    // Stops CADisplayLink after deallocation
+    [_displayLink removeFromRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
 }
 
--(CADisplayLink*)displayLink{
-    if (!_displayLink) {
-        _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(refresh:)];
-        [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+-(void)refresh:(CADisplayLink*)sender{
+    if (self.frameCounter == 0) self.flashUpdate(self.indexCounter, self.cycleCounter); // Block callback
+    self.frameCounter++; // Complex setter
+}
+
+#pragma mark - Property Setters
+
+-(void)setFrameCounter:(NSUInteger)intervalCounter{
+    _frameCounter = intervalCounter % self.currentIntervalLength; //modulo interval length
+    
+    //Increment flash interval array index on counter rollover
+    if (_frameCounter == 0) {
+        self.indexCounter++; // Complex setter
     }
-    return _displayLink;
+}
+
+-(void)setIndexCounter:(NSUInteger)indexCounter{
+    _indexCounter = indexCounter % self.flashInterval.count; // modulo interval count
+    
+    //Increment cycle count on index rollover
+    if (_indexCounter == 0) {
+        self.cycleCounter++; // Complex setter
+    }
+}
+
+-(void)setCycleCounter:(NSUInteger)cycleCounter{
+    _cycleCounter = cycleCounter % self.numberOfCycles;
 }
 
 -(void)setFlashing:(BOOL)flashing{
@@ -56,7 +81,7 @@
 }
 
 -(void)setFlashInterval:(NSArray *)flashInterval{
-    //Ensure that flashInterval is valid
+    // Ensure that flashInterval is valid
     if (!flashInterval || flashInterval.count == 0) {
         [NSException raise:@"Invalid flash interval" format:@"Flash interval array must include a non-zero number of NSNumber integers"];
     }
@@ -68,57 +93,40 @@
         }
         _flashInterval = flashInterval;
         
-        //Reset counters to prevent exceptions
-        _intervalCounter = 0;
+        // Reset counters to prevent exceptions
+        _frameCounter = 0;
         _indexCounter = 0;
     }
 }
 
 -(void)setNumberOfCycles:(NSUInteger)numberOfCycles{
+    // Ensure valid number of cycles
     if (numberOfCycles > 0) _numberOfCycles = numberOfCycles;
     else [NSException raise:@"Invalid number of cycles" format:@"Number of cycles must be a positive integer"];
 }
 
--(NSArray*)flashInterval{
-    if (!_flashInterval) _flashInterval = @[@1]; //default flash interval
-    return _flashInterval;
-}
-
--(void)refresh:(CADisplayLink*)displayLink{
-    if (self.intervalCounter == 0) {
-        self.flashUpdate(self.indexCounter, self.cycleCounter);
-    }
-    self.intervalCounter++;
-}
-
--(void)setIndexCounter:(NSUInteger)indexCounter{
-    _indexCounter = indexCounter % self.flashInterval.count;
-    
-    //Increment flash interval array index on counter rollover
-    if (_indexCounter == 0) {
-        self.cycleCounter++;
-    }
-}
-
--(void)setIntervalCounter:(NSUInteger)intervalCounter{
-    _intervalCounter = intervalCounter % self.currentIntervalLength;
-    
-    //Increment flash interval array index on counter rollover
-    if (_intervalCounter == 0) {
-        self.indexCounter++;
-    }
-}
-
--(void)setCycleCounter:(NSUInteger)cycleCounter{
-    _cycleCounter = cycleCounter % self.numberOfCycles;
-}
+#pragma mark - Property Getters
 
 -(NSUInteger)currentIntervalLength{
     return [[self.flashInterval objectAtIndex:self.indexCounter] unsignedIntegerValue];
 }
 
--(void)dealloc{
-    [self.displayLink removeFromRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+// Initializes CADisplayLink, sets it up, and adds it to run loop on first access
+-(CADisplayLink*)displayLink{
+    
+    if (!_displayLink) { // Lazy initialization
+        
+        // Weak target ensures that CADisplayLink doesn't prevent JGCyclicFlasher deallocation
+        JGWeakTarget *target = [JGWeakTarget weakTargetWithTarget:self selector:@selector(refresh:)];
+        _displayLink = [CADisplayLink displayLinkWithTarget:target.weakTarget selector:target.weakSelector];
+        [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSDefaultRunLoopMode];
+    }
+    return _displayLink;
+}
+
+-(NSArray*)flashInterval{
+    if (!_flashInterval) _flashInterval = @[@1]; //default flash interval
+    return _flashInterval;
 }
 
 @end
