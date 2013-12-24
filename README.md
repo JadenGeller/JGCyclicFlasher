@@ -3,6 +3,10 @@ JGCyclicFlasher
 
 JGCyclicFlasher simplifies the process of creating very short repeating animations with intervals as short as a single screen refresh. Unlike CADisplayLink, JGCyclicFlasher is block based and contains conveniences for more easily creating complex animations. A flashInterval can be set indicating the number of frames for which each state is displayed. In addition, JGCyclicFlasher can index the cycles to create more complicated state-dependent animations.
 
+Installation
+===============
+To use JGCyclicFlasher with your project, you must add both the header and implementation files for JGCyclicFlasher and JGWeakTarget to your project and import JGCyclicFlasher.h.
+
 Example
 ===============
 
