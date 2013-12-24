@@ -16,7 +16,7 @@
  */
 @interface JGCyclicFlasher : NSObject
 
-/** Boolean value specifying whether the the cyclic flasher is currently animating and calling the block. Used as a setter, the animation can be paused and resumed.
+/** Boolean value specifying whether the the cyclic flasher is currently animating and calling the block. Used as a setter, the animation can be paused and resumed. Default value is NO, so this value must be changed in order to start receiving block fuction callbacks. Note that this property does not need to be set to NO before deallocation.
  
  @code
  
@@ -29,7 +29,7 @@
  */
 @property (nonatomic) BOOL flashing;
 
-/** Specifies the number of frames before the callback for each state. The cyclic flasher follows each interval in the flashInterval sequentually and then repeats. The flash interval can be set to a new NSArray of NSNumber objects. The array must contain at least one NSNumber, and each NSNumber must represent a positive integer. Note that, upon deallocation, JGCyclicFlasher automatically stops flashing as its corresponding CADisplayLink is removed for the run loop.
+/** Specifies the number of frames before the callback for each state. The cyclic flasher follows each interval in the flashInterval sequentually and then repeats. The flash interval can be set to a new NSArray of NSNumber objects. The array must contain at least one NSNumber, and each NSNumber must represent a positive integer. Note that, upon deallocation, JGCyclicFlasher automatically stops flashing as its corresponding CADisplayLink is removed for the run loop. Default value is @[@1], or a 1 frame flash interval.
  
  @code
  
@@ -43,7 +43,7 @@
  */
 @property (nonatomic) NSArray *flashInterval;
 
-/** Indicates how many times the flash interval repeats before the entire animation repeats. Used to keep track of current repition count during animation block for use in more complex animations. If the animation repeats when the flash interval repeats, the animation is a single cycle animation and the cycle variable in the block callback can be ignored. Default value is @[@1], or a 1 frame flash interval.
+/** Indicates how many times the flash interval repeats before the entire animation repeats. Used to keep track of current repition count during animation block for use in more complex animations. If the animation repeats when the flash interval repeats, the animation is a single cycle animation and the cycle variable in the block callback can be ignored. Default value is 1 cycle.
  
  @code
  
@@ -58,7 +58,7 @@
 
 @property (nonatomic) NSUInteger numberOfCycles;
 
-/** Specifies the callback for the cyclic flasher after each flash interval. In this block should all the animation logic be implemented. The animation block recieves two arguments: the current state and the current cycle. The current state is an integer representing the current flash interval. In essenece, it is the index of the flash interval array that is currently animating. The current cycle is an integer from 0 to numberOfCycles-1 that represents the repeat index. This can be used to easily modify the animation in a repetitive pattern. Default value is 1 cycle.
+/** Specifies the callback for the cyclic flasher after each flash interval. In this block should all the animation logic be implemented. The animation block recieves two arguments: the current state and the current cycle. The current state is an integer representing the current flash interval. In essenece, it is the index of the flash interval array that is currently animating. The current cycle is an integer from 0 to numberOfCycles-1 that represents the repeat index. This can be used to easily modify the animation in a repetitive pattern.
  
  @code
  
